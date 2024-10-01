@@ -12,7 +12,7 @@ parameters {
   real int_0;
   real int_1;
   
-  // Variety-specific effects for ratings A and B
+  // Category-specific (specific to each rating) effects for varieties 1 and 2
   real tau_01;
   real tau_11;
   real tau_02;

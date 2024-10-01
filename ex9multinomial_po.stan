@@ -12,7 +12,7 @@ parameters {
   real int_0;
   real int_1;
   
-  // Effects for ratings 1 and 2
+  // Effects for varieties 1 and 2
   real tau_1;
   real tau_2;
 
