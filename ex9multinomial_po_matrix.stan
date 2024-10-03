@@ -1,3 +1,11 @@
+functions {
+  vector row_sums(matrix X) {
+    vector[rows(X)] s ;	
+	  for (i in 1:rows(X)) s[i] = sum(row(X, i)) ;
+	  return s ;
+  }
+}
+
 data {
   int<lower=1> N;
   int<lower=1> N_growers;
@@ -12,7 +20,7 @@ data {
 parameters {
   // Fixed effect parameters
   array[k - 1] real Intercept; // One intercept per link function
-  vector[N_varieties - 1] Tau; // One vector of treatment parameters for all link functions (because it is prop odds model)
+  vector[N_varieties - 1] Tau; // One vector of treatment parameters for all link functions (because it is proportional odds model)
   
   // Standard deviations of random effects
   real<lower=0> sd_g; // SD of random effect for each grower.
@@ -24,9 +32,9 @@ parameters {
 }
 
 transformed parameters {
-  // Linear predictors (there are two link functions because k=3 levels of Rating)
+  // Linear predictors (there are k-1 link functions for k categories)
   matrix[N, k - 1] eta;
-  // Parameters of the multinomial distribution (probabilities of each rating)
+  // Parameters of the multinomial distribution (probabilities of each category)
   matrix[N, k] Pi;
 
   // Construct each of the k-1 linear predictors as sum of fixed and random terms
@@ -34,18 +42,22 @@ transformed parameters {
     eta[, i] = Intercept[i] + X * Tau + Zg * g + Zgv * gv;
   }
 
-  // Apply inverse link function to linear predictors. Not sure how to convert this to matrix algebra or generalize to >3 levels
+  // Apply inverse link function to linear predictors
   Pi[, 1] = 1 / (1 + exp(-eta[, 1]));
-  Pi[, 2] = fmax(0.0, 1 / (1 + exp(-eta[, 2])) - 1 / (1 + exp(-eta[, 1])));
-  Pi[, 3] = 1 - Pi[, 2] - Pi[, 1];
   
+  for (i in 2:(k-1)) {
+    Pi[, i] = fmax(0.0, 1 / (1 + exp(-eta[, i])) - row_sums(Pi[, 1:(i-1)]));
+  }
+  
+  Pi[, k] = 1 - row_sums(Pi[, 1:(k-1)]);
+
 }
 
 model {
   // Priors (weakly informative)
   sd_g ~ gamma(1, 1);
   sd_gv ~ gamma(1, 1);
-  for (i in 1:k-1) {
+  for (i in 1:(k-1)) {
     Intercept[i] ~ normal(0, 10);
     Tau[i] ~ normal(0, 10);
   }
